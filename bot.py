@@ -9,16 +9,19 @@ from content_log import log_content
 from voice_generator import generate_voice
 from video_builder import build_video
 from subtitle_generator import create_srt
+from thumbnail_generator import create_thumbnail
 
 SCRIPT_DIR = Path("output/scripts")
 AUDIO_DIR = Path("output/audio")
 VIDEO_DIR = Path("output/videos")
 SUBTITLE_DIR = Path("output/subtitles")
+THUMBNAIL_DIR = Path("output/thumbnails")
 
 SCRIPT_DIR.mkdir(parents=True, exist_ok=True)
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 SUBTITLE_DIR.mkdir(parents=True, exist_ok=True)
+THUMBNAIL_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def extract_section(full_content, start_label, end_label=None):
@@ -87,12 +90,16 @@ def main():
             subtitle_path=subtitle_path
         )
 
+        print("Creating thumbnail...")
+        thumbnail_path = create_thumbnail(title, base_name)
+
         log_content(topic, script_path)
 
         print(f"Saved script: {script_path}")
         print(f"Saved audio: {audio_path}")
         print(f"Saved subtitles: {subtitle_path}")
         print(f"Saved video: {video_path}")
+        print(f"Saved thumbnail: {thumbnail_path}")
 
     print("\nAll Shorts Generated Successfully!")
 
