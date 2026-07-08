@@ -1,11 +1,24 @@
 from pathlib import Path
-from moviepy import AudioFileClip, ColorClip, TextClip, CompositeVideoClip
+import numpy as np
+from moviepy import AudioFileClip, TextClip, CompositeVideoClip, VideoClip, ImageClip
 
 VIDEO_DIR = Path("output/videos")
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
 WIDTH = 1080
 HEIGHT = 1920
+
+
+def srt_time_to_seconds(time_text):
+    time_part, milliseconds = time_text.split(",")
+    hours, minutes, seconds = time_part.split(":")
+
+    return (
+        int(hours) * 3600
+        + int(minutes) * 60
+        + int(seconds)
+        + int(milliseconds) / 1000
+    )
 
 
 def read_srt(subtitle_path):
@@ -21,62 +34,107 @@ def read_srt(subtitle_path):
         lines = block.splitlines()
 
         if len(lines) >= 3:
-            time_line = lines[1]
+            start_text, end_text = lines[1].split(" --> ")
             text = " ".join(lines[2:])
 
-            start_text, end_text = time_line.split(" --> ")
-            start = srt_time_to_seconds(start_text)
-            end = srt_time_to_seconds(end_text)
-
-            captions.append((start, end, text))
+            captions.append(
+                (
+                    srt_time_to_seconds(start_text),
+                    srt_time_to_seconds(end_text),
+                    text,
+                )
+            )
 
     return captions
 
 
-def srt_time_to_seconds(time_text):
-    time_part, milliseconds = time_text.split(",")
-    hours, minutes, seconds = time_part.split(":")
+def create_animated_background(duration):
+    def make_frame(t):
+        frame = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
 
-    return (
-        int(hours) * 3600
-        + int(minutes) * 60
-        + int(seconds)
-        + int(milliseconds) / 1000
+        for y in range(HEIGHT):
+            blue = int(30 + 40 * np.sin((y / 180) + t))
+            purple = int(35 + 35 * np.cos((y / 240) + t))
+            frame[y, :, 0] = 15
+            frame[y, :, 1] = purple
+            frame[y, :, 2] = blue + 50
+
+        return frame
+
+    return VideoClip(make_frame, duration=duration)
+
+
+def create_progress_bar(duration):
+    def make_frame(t):
+        frame = np.zeros((20, WIDTH, 3), dtype=np.uint8)
+        progress_width = int((t / duration) * WIDTH)
+
+        frame[:, :progress_width, :] = [255, 255, 255]
+        frame[:, progress_width:, :] = [60, 60, 80]
+
+        return frame
+
+    return VideoClip(make_frame, duration=duration).with_position(("center", HEIGHT - 40))
+
+
+def create_image_clip(image_path, duration):
+    if not image_path or not Path(image_path).exists():
+        return None
+
+    clip = ImageClip(str(image_path)).with_duration(duration)
+
+    clip = clip.resized(height=HEIGHT)
+
+    if clip.w < WIDTH:
+        clip = clip.resized(width=WIDTH)
+
+    clip = clip.cropped(
+        x_center=clip.w / 2,
+        y_center=clip.h / 2,
+        width=WIDTH,
+        height=HEIGHT
     )
 
+    return clip.with_position(("center", "center"))
 
-def build_video(audio_path, title, output_name, subtitle_path=None):
+
+def build_video(audio_path, title, output_name, subtitle_path=None, image_path=None):
     audio = AudioFileClip(str(audio_path))
     duration = audio.duration
 
-    background = ColorClip(
-        size=(WIDTH, HEIGHT),
-        color=(15, 15, 25),
-        duration=duration
-    )
+    image_clip = create_image_clip(image_path, duration)
+
+    if image_clip:
+        background = image_clip
+    else:
+        background = create_animated_background(duration)
+
+    progress_bar = create_progress_bar(duration)
 
     title_clip = TextClip(
         text=title,
-        font_size=72,
+        font_size=70,
         color="white",
+        stroke_color="black",
+        stroke_width=3,
         size=(950, None),
         method="caption"
-    ).with_position(("center", 260)).with_duration(duration)
+    ).with_position(("center", 220)).with_duration(duration)
 
-    clips = [background, title_clip]
+    clips = [background, title_clip, progress_bar]
 
     captions = read_srt(subtitle_path)
 
     for start, end, text in captions:
         caption_clip = TextClip(
             text=text,
-            font_size=62,
+            font_size=64,
             color="white",
             stroke_color="black",
-            stroke_width=4,
+            stroke_width=5,
             size=(950, None),
             method="caption"
-        ).with_position(("center", 1250)).with_start(start).with_duration(end - start)
+        ).with_position(("center", 1240)).with_start(start).with_duration(end - start)
 
         clips.append(caption_clip)
 
@@ -96,19 +154,3 @@ def build_video(audio_path, title, output_name, subtitle_path=None):
     video.close()
 
     return output_path
-
-
-if __name__ == "__main__":
-    test_audio = Path("output/audio/test.mp3")
-    test_subtitles = Path("output/subtitles/test.srt")
-
-    if not test_audio.exists():
-        print("Missing output/audio/test.mp3. Run voice_generator.py first.")
-    else:
-        video_path = build_video(
-            audio_path=test_audio,
-            title="AI in 60 Seconds",
-            output_name="test_video_captioned",
-            subtitle_path=test_subtitles
-        )
-        print(f"Video created: {video_path}")

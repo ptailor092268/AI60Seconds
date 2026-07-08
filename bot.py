@@ -11,6 +11,7 @@ from video_builder import build_video
 from subtitle_generator import create_srt
 from thumbnail_generator import create_thumbnail
 from upload_package import create_upload_package
+from image_generator import generate_placeholder_image
 
 SCRIPT_DIR = Path("output/scripts")
 AUDIO_DIR = Path("output/audio")
@@ -18,8 +19,9 @@ VIDEO_DIR = Path("output/videos")
 SUBTITLE_DIR = Path("output/subtitles")
 THUMBNAIL_DIR = Path("output/thumbnails")
 PACKAGE_DIR = Path("output/upload_packages")
+IMAGE_DIR = Path("output/images")
 
-for folder in [SCRIPT_DIR, AUDIO_DIR, VIDEO_DIR, SUBTITLE_DIR, THUMBNAIL_DIR, PACKAGE_DIR]:
+for folder in [SCRIPT_DIR, AUDIO_DIR, VIDEO_DIR, SUBTITLE_DIR, THUMBNAIL_DIR, PACKAGE_DIR, IMAGE_DIR]:
     folder.mkdir(parents=True, exist_ok=True)
 
 
@@ -45,6 +47,11 @@ def extract_script_text(full_content):
     return script if script else full_content.strip()
 
 
+def extract_thumbnail_prompt(full_content):
+    prompt = extract_section(full_content, "THUMBNAIL PROMPT:")
+    return prompt if prompt else "Futuristic artificial intelligence concept, vertical YouTube Shorts style"
+
+
 def main():
     parser = argparse.ArgumentParser(description="AI60Seconds YouTube Shorts Generator")
     parser.add_argument("--count", type=int, default=1)
@@ -68,6 +75,10 @@ def main():
 
         title = extract_title(result)
         voice_text = extract_script_text(result)
+        image_prompt = extract_thumbnail_prompt(result)
+
+        print("Generating visual image...")
+        image_path = generate_placeholder_image(image_prompt, base_name)
 
         print("Generating voiceover...")
         generate_voice(voice_text, base_name)
@@ -81,12 +92,13 @@ def main():
         )
         audio.close()
 
-        print("Building video with captions...")
+        print("Building video with image and captions...")
         video_path = build_video(
             audio_path=audio_path,
             title=title,
             output_name=base_name,
-            subtitle_path=subtitle_path
+            subtitle_path=subtitle_path,
+            image_path=image_path
         )
 
         print("Creating thumbnail...")
@@ -103,6 +115,7 @@ def main():
         log_content(topic, script_path)
 
         print(f"Saved script: {script_path}")
+        print(f"Saved image: {image_path}")
         print(f"Saved audio: {audio_path}")
         print(f"Saved subtitles: {subtitle_path}")
         print(f"Saved video: {video_path}")
