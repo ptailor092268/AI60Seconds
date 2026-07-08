@@ -79,11 +79,12 @@ def main():
         )
         audio.close()
 
-        print("Building video...")
+        print("Building video with captions...")
         video_path = build_video(
             audio_path=audio_path,
             title=title,
-            output_name=base_name
+            output_name=base_name,
+            subtitle_path=subtitle_path
         )
 
         log_content(topic, script_path)
