@@ -1,4 +1,6 @@
-﻿.venv/
+﻿.vscode/
+client_secret.json
+.venv/
 __pycache__/
 *.mp4
 *.mov
