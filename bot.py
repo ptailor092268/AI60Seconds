@@ -1,20 +1,24 @@
 import argparse
 from datetime import datetime
 from pathlib import Path
+from moviepy import AudioFileClip
 
 from topics import get_topic
 from script_generator import create_short_package
 from content_log import log_content
 from voice_generator import generate_voice
 from video_builder import build_video
+from subtitle_generator import create_srt
 
 SCRIPT_DIR = Path("output/scripts")
 AUDIO_DIR = Path("output/audio")
 VIDEO_DIR = Path("output/videos")
+SUBTITLE_DIR = Path("output/subtitles")
 
 SCRIPT_DIR.mkdir(parents=True, exist_ok=True)
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+SUBTITLE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def extract_section(full_content, start_label, end_label=None):
@@ -66,6 +70,15 @@ def main():
         print("Generating voiceover...")
         generate_voice(voice_text, base_name)
 
+        print("Creating subtitle file...")
+        audio = AudioFileClip(str(audio_path))
+        subtitle_path = create_srt(
+            script_text=voice_text,
+            audio_duration=audio.duration,
+            output_name=base_name
+        )
+        audio.close()
+
         print("Building video...")
         video_path = build_video(
             audio_path=audio_path,
@@ -77,6 +90,7 @@ def main():
 
         print(f"Saved script: {script_path}")
         print(f"Saved audio: {audio_path}")
+        print(f"Saved subtitles: {subtitle_path}")
         print(f"Saved video: {video_path}")
 
     print("\nAll Shorts Generated Successfully!")
