@@ -1,4 +1,5 @@
-﻿.vscode/
+﻿youtube_token.json
+.vscode/
 client_secret.json
 .venv/
 __pycache__/
